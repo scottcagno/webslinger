@@ -15,6 +15,7 @@ func BenchmarkTimedMap_SetTemporary(b *testing.B) {
 }
 
 func BenchmarkTimedMap_Get(b *testing.B) {
+	tmap.Set("some key", "some value", expiresAt)
 	for i := 0; i < b.N; i++ {
 		_, ok := tmap.Get("some key")
 		if !ok {

@@ -1,14 +1,26 @@
 package sessions
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
+var ErrInvalidEntryType = errors.New("invalid Entry type")
+var ErrNotFound = errors.New("not found")
+
+type Entry interface {
+	ExpiresAt() time.Time
+}
+
 type entry struct {
-	ttl   time.Duration
-	value any
+	data    any
+	expires time.Time
+}
+
+func (e entry) ExpiresAt() time.Time {
+	return e.expires
 }
 
 type TimedMap struct {
@@ -49,18 +61,18 @@ func (tm *TimedMap) clean() {
 	if tm.Len() == 0 {
 		return
 	}
-	// current time as unix timestamp
-	now := time.Now().Unix()
 	// iterate over the map (deleting expired values)
 	tm.m.Range(func(k, v any) bool {
-		if now >= int64(v.(entry).ttl) {
-			_, exists := tm.m.LoadAndDelete(k)
-			if exists {
-				// key was in the map so, decrement entry count
-				decr(&tm.entries)
+		if e, ok := v.(Entry); ok {
+			if time.Until(e.ExpiresAt()) < 1 {
+				_, exists := tm.m.LoadAndDelete(k)
+				if exists {
+					// key was in the map so, decrement entry count
+					decr(&tm.entries)
+				}
+				// otherwise, existing entry was not found so, there is
+				// no need to modify the entry count
 			}
-			// otherwise, existing entry was not found so, there is
-			// no need to modify the entry count
 		}
 		return true
 	})
@@ -126,27 +138,62 @@ func (tm *TimedMap) Len() int {
 	return int(check(&tm.entries))
 }
 
-func (tm *TimedMap) Set(k string, v any, expires time.Duration) {
-	_, exists := tm.m.LoadOrStore(k, entry{expires, v})
+func (tm *TimedMap) SetEntry(k string, e Entry) error {
+	if _, ok := e.(Entry); !ok {
+		return ErrInvalidEntryType
+	}
+	_, exists := tm.m.LoadOrStore(k, e)
 	if !exists {
 		// key was not in the map so, increment entry count
 		incr(&tm.entries)
 	}
 	// otherwise, existing entry was not found so, there is
 	// no need to modify the entry count
+	return nil
 }
 
-func (tm *TimedMap) Get(k string) (any, bool) {
+func (tm *TimedMap) GetEntry(k string) (Entry, error) {
 	v, exists := tm.m.Load(k)
-	return v, exists
+	if !exists {
+		return nil, ErrNotFound
+	}
+	e, ok := v.(Entry)
+	if !ok {
+		return nil, ErrInvalidEntryType
+	}
+	return e, nil
 }
 
-func (tm *TimedMap) Del(k string) {
-	_, exists := tm.m.LoadAndDelete(k)
+func (tm *TimedMap) DelEntry(k string) (Entry, error) {
+	v, exists := tm.m.LoadAndDelete(k)
 	if exists {
 		// key was in the map so, decrement entry count
 		decr(&tm.entries)
 	}
 	// otherwise, existing entry was not found so, there is
 	// no need to modify the entry count
+	e, ok := v.(Entry)
+	if !ok {
+		return nil, ErrInvalidEntryType
+	}
+	return e, nil
+}
+
+func (tm *TimedMap) Set(k string, v any, expires time.Duration) error {
+	return tm.SetEntry(k, entry{
+		data:    v,
+		expires: time.Now().Add(expires),
+	})
+}
+
+func (tm *TimedMap) Get(k string) (any, bool) {
+	e, err := tm.GetEntry(k)
+	if err != nil {
+		return nil, false
+	}
+	return e, true
+}
+
+func (tm *TimedMap) Del(k string) {
+	tm.DelEntry(k)
 }

@@ -1,4 +1,4 @@
-package sessions
+package random
 
 import (
 	"errors"
@@ -62,20 +62,22 @@ func (tm *TimedMap) clean() {
 		return
 	}
 	// iterate over the map (deleting expired values)
-	tm.m.Range(func(k, v any) bool {
-		if e, ok := v.(Entry); ok {
-			if time.Until(e.ExpiresAt()) < 1 {
-				_, exists := tm.m.LoadAndDelete(k)
-				if exists {
-					// key was in the map so, decrement entry count
-					decr(&tm.entries)
+	tm.m.Range(
+		func(k, v any) bool {
+			if e, ok := v.(Entry); ok {
+				if time.Until(e.ExpiresAt()) < 1 {
+					_, exists := tm.m.LoadAndDelete(k)
+					if exists {
+						// key was in the map so, decrement entry count
+						decr(&tm.entries)
+					}
+					// otherwise, existing entry was not found so, there is
+					// no need to modify the entry count
 				}
-				// otherwise, existing entry was not found so, there is
-				// no need to modify the entry count
 			}
-		}
-		return true
-	})
+			return true
+		},
+	)
 }
 
 func (tm *TimedMap) StartCleaner() {
@@ -180,10 +182,12 @@ func (tm *TimedMap) DelEntry(k string) (Entry, error) {
 }
 
 func (tm *TimedMap) Set(k string, v any, expires time.Duration) error {
-	return tm.SetEntry(k, entry{
-		data:    v,
-		expires: time.Now().Add(expires),
-	})
+	return tm.SetEntry(
+		k, entry{
+			data:    v,
+			expires: time.Now().Add(expires),
+		},
+	)
 }
 
 func (tm *TimedMap) Get(k string) (any, bool) {

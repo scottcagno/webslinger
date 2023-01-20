@@ -9,30 +9,30 @@ import (
 
 // Session represents a server side session.
 type Session struct {
-	ID   SessionID
-	data *sync.Map
-	ttl  time.Time
+	ID      SessionID
+	data    *sync.Map
+	Expires time.Time
 }
 
 // newSession creates and returns a new *Session
 func newSession(ttl time.Duration) *Session {
 	return &Session{
-		ID:   NewSessionID(),
-		data: new(sync.Map),
-		ttl:  time.Now().Add(ttl),
+		ID:      NewSessionID(),
+		data:    new(sync.Map),
+		Expires: time.Now().Add(ttl),
 	}
 }
 
 // ExpiresIn returns a duration of time until this
 // Session is to be marked as expired.
 func (s *Session) ExpiresIn() time.Duration {
-	return time.Until(s.ttl)
+	return time.Until(s.Expires)
 }
 
 // IsExpired returns a boolean resulting in true if
 // the Session time to live is expired.
 func (s *Session) IsExpired() bool {
-	return time.Until(s.ttl) < 1
+	return time.Until(s.Expires) < 1
 }
 
 // Set takes a key of type string and value of any type
@@ -60,7 +60,7 @@ func (s *Session) String() string {
 	var sb strings.Builder
 	sb.Grow(64)
 	sb.WriteString("ID=")
-	sb.Write(s.ID[:])
+	sb.WriteString(string(s.ID))
 	sb.WriteString(", TTL=")
 	sb.WriteString(s.ExpiresIn().String())
 	return sb.String()
@@ -72,14 +72,15 @@ func (s *Session) String() string {
 const ascii = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 // SessionID represents a primary session ID key.
-type SessionID [32]byte
+// type SessionID [32]byte
+type SessionID string
 
 // NewSessionID creates and returns a (hopefully) unique ID
 // that can be used to ID a Session object.
 func NewSessionID() SessionID {
-	var sid SessionID
+	sid := make([]byte, 32, 32)
 	for i := range sid {
 		sid[i] = ascii[rand.Intn(len(ascii))]
 	}
-	return sid
+	return SessionID(sid)
 }

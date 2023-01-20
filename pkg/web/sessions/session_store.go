@@ -21,7 +21,6 @@ var DefaultSessionStore = &defaultSessionStore
 var defaultSessionStore sessionStore
 
 type sessionStore struct {
-	storeKey string
 	timeout  time.Duration
 	sessions *sync.Map
 	ticker   *time.Ticker
@@ -29,22 +28,21 @@ type sessionStore struct {
 	cancel   context.CancelFunc
 }
 
-func openSessionStore(key string, timeout time.Duration) *sessionStore {
+func openSessionStore(timeout time.Duration) *sessionStore {
 	ssOnce.Do(
 		func() {
-			defaultSessionStore = *initSessionStore(key, timeout)
+			defaultSessionStore = *initSessionStore(timeout)
 		},
 	)
 	return &defaultSessionStore
 }
 
-func initSessionStore(key string, timeout time.Duration) *sessionStore {
+func initSessionStore(timeout time.Duration) *sessionStore {
 	if timeout < minimumTimeout {
 		timeout = minimumTimeout
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	ss := &sessionStore{
-		storeKey: key,
 		timeout:  timeout,
 		sessions: new(sync.Map),
 		ticker:   time.NewTicker(tickerDefault),
@@ -86,8 +84,19 @@ func (ss *sessionStore) saveSession(session *Session) {
 		return
 	}
 	// Otherwise, bump the expiry time and save it.
-	session.ttl = time.Now().Add(ss.timeout)
+	session.Expires = time.Now().Add(ss.timeout)
 	ss.sessions.Store(session.ID, session)
+}
+
+// killSession takes a *Session and removes it from the underlying sessionStore.
+func (ss *sessionStore) killSession(session *Session) {
+	// If the session is nil, do nothing the checkForExpiredSessions
+	// will handle any of the extra cleanup necessary.
+	if session == nil {
+		return
+	}
+	// Otherwise, remove the session from the store.
+	ss.sessions.Delete(session.ID)
 }
 
 func (ss *sessionStore) cleanUpRoutine() {

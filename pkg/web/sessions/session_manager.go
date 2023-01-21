@@ -24,6 +24,8 @@ type SessionManager interface {
 	// named session can not be found.
 	GetSession(w http.ResponseWriter, r *http.Request) (*Session, error)
 
+	MustGetSession(w http.ResponseWriter, r *http.Request) (*Session, error)
+
 	// SaveSession takes a http.ResponseWriter, as well
 	// as a *http.Request and a *Session and persists it
 	// to the underlying sessionStore as well as writing anything
@@ -77,6 +79,28 @@ func (sm *sessionManager) NewSession() *Session {
 	return sm.store.newSession()
 }
 
+// MustGetSession checks for an existing session in the store using a cookie
+// with the same name that the session manager was provided with. If one is
+// not found, then it creates a new one and returns it.
+func (sm *sessionManager) MustGetSession(w http.ResponseWriter, r *http.Request) (*Session, error) {
+	// Check for an existing session by looking in the request for a cookie.
+	c, err := r.Cookie(sm.name)
+	if err == http.ErrNoCookie {
+		// No cookie was found, we will return a new session
+		return sm.store.newSession(), nil
+	}
+	// Otherwise, we have found a session cookie, but we must check to ensure
+	// that it is not expired.
+	sess, found := sm.store.getSession(SessionID(c.Value))
+	if !found {
+		// No session has been found, we will return an error
+		return nil, ErrNoSession
+	}
+	// Otherwise, we have successfully located an existing session that we can
+	// return along with a nil error
+	return sess, nil
+}
+
 // GetSession checks for an existing session in the store using a cookie
 // with the same name that the session manager was provided with.
 func (sm *sessionManager) GetSession(w http.ResponseWriter, r *http.Request) (*Session, error) {
@@ -119,12 +143,13 @@ func (sm *sessionManager) KillSession(w http.ResponseWriter, r *http.Request, se
 	// Check for an existing session by looking in the request for a cookie.
 	// If we find a cookie we must expire it.
 	c, err := r.Cookie(sm.name)
-	if err != nil {
-		// Cookie was found, we have to expire it.
-		c.Expires = time.Now()
-		http.SetCookie(w, NewCookie(sm.name, string(sess.ID), sm.domain, time.Now()))
+	if c == nil || err == http.ErrNoCookie {
+		return nil
 	}
-	// Next, remove the session from the store
+	// Remove the session from the store, and set the updated cookie
 	sm.store.killSession(sess)
+	c.Expires = time.Now()
+	c.MaxAge = -1
+	http.SetCookie(w, c)
 	return nil
 }

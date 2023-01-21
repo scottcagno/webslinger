@@ -20,37 +20,63 @@ var id int
 
 func main() {
 
-	http.HandleFunc("/session/create", createSession)
-	http.HandleFunc("/session/view", viewSession)
-	http.HandleFunc("/session/kill", killSession)
+	http.HandleFunc("/secret", secret)
+	http.HandleFunc("/login", login)
+	http.HandleFunc("/logout", logout)
 	log.Panic(http.ListenAndServe(":3333", nil))
 
 }
 
-func createSession(w http.ResponseWriter, r *http.Request) {
-	s := sm.NewSession()
-	s.Set("id", id)
-	sm.SaveSession(w, r, s)
-	fmt.Fprintf(w, "created new session")
+func secret(w http.ResponseWriter, r *http.Request) {
+	// check for a session
+	s, err := sm.GetSession(w, r)
+	if err != nil {
+		fmt.Fprintf(w, "error getting session: %s\n", err)
+		return
+	}
+	// check if the user is authenticated
+	_, found := s.Get("auth")
+	if !found {
+		fmt.Fprintf(w, "error getting auth token: %s\n", err)
+		return
+	}
+	// print secret message
+	fmt.Fprintf(w, "The cake was a lie!\n")
 	return
 }
 
-func viewSession(w http.ResponseWriter, r *http.Request) {
-	s, err := sm.GetSession(w, r)
+func login(w http.ResponseWriter, r *http.Request) {
+	// get or create a session
+	s, err := sm.MustGetSession(w, r)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(w, "error getting or creating session: %s\n", err)
+		return
 	}
-	fmt.Fprintf(w, "my session: %s\n", s.String())
-	sm.SaveSession(w, r, s)
+	// set an auth token
+	s.Set("auth", true)
+	// save the session
+	err = sm.SaveSession(w, r, s)
+	if err != nil {
+		fmt.Fprintf(w, "error saving session: %s\n", err)
+		return
+	}
+	fmt.Fprintf(w, "successful login\n")
 	return
 }
 
-func killSession(w http.ResponseWriter, r *http.Request) {
+func logout(w http.ResponseWriter, r *http.Request) {
+	// get the current session
 	s, err := sm.GetSession(w, r)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(w, "error getting session: %s\n", err)
+		return
 	}
-	fmt.Fprintf(w, "killed session")
-	sm.KillSession(w, r, s)
+	// remove the session
+	err = sm.KillSession(w, r, s)
+	if err != nil {
+		fmt.Fprintf(w, "error removing session: %s\n", err)
+		return
+	}
+	fmt.Fprintf(w, "successfully logged out\n")
 	return
 }

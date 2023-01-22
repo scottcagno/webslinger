@@ -4,23 +4,19 @@ import (
 	"time"
 )
 
-// Session is an interface for custom session types.
-type SessionT interface {
+type Session interface {
 
-	// ID should return the ID for the session.
-	ID() string
+	// Decode should take a raw byte slice and return an expiry time,
+	// session data, and any potential errors.
+	Decode(b []byte) (expiry time.Time, data map[string]any, err error)
 
-	// Expires takes a time, and sets the expiry time for the session. It can be
-	// used to update and keep the session alive.
-	Expires(at time.Time)
-
-	// ExpiresIn should return the remaining time left until the session is due
-	// to expire.
-	ExpiresIn() time.Duration
+	// Encode should take an expiry time, session data, and return an
+	// encoded byte slice, along with any potential errors.
+	Encode(expiry time.Time, data map[string]any) ([]byte, error)
 }
 
 // SessionStore is an interface for custom session stores.
-type SessionStoreT interface {
+type SessionStore interface {
 
 	// New should create and return a new session.
 	New(token string) Session
@@ -31,7 +27,7 @@ type SessionStoreT interface {
 
 	// Save should persist the session on the underlying store. It should only return
 	// an error if something goes wrong.
-	Save(token string, session Session) error
+	Save(token string, session Session, expiry time.Time) error
 
 	// Delete should remove the session token and corresponding session data from the
 	// store. If the token does not exist, Delete should simply return nil.

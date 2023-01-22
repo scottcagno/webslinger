@@ -19,8 +19,8 @@ var sm = sessions.OpenSessionManager("MY_SESSIONS", "*", 15*time.Minute)
 var id int
 
 func main() {
-
-	http.HandleFunc("/secret", secret)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/secret", secret)
 	http.HandleFunc("/login", login)
 	http.HandleFunc("/logout", logout)
 	log.Panic(http.ListenAndServe(":3333", nil))

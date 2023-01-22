@@ -8,9 +8,53 @@ import (
 	"time"
 )
 
+// SessionCookie contains the configuration settings for session cookies.
+type SessionCookie struct {
+
+	// Name sets the name of the session cookie. It should not contain
+	// whitespace, commas, colons, semicolons, backslashes, the equals
+	// sign or control characters as per RFC6265. The default cookie name
+	// is "SESSION". If your application uses two different sessions, you
+	// must make sure that the cookie name for each is unique.
+	Name string
+
+	// Path sets the 'Path' attribute on the session cookie. The default
+	// value is "/". Passing the empty string "" will result in it being
+	// set to the path that the cookie was issued from.
+	Path string
+
+	// Domain sets the 'Domain' attribute on the session cookie. By default,
+	// it will be set to the domain name that the cookie was issued from.
+	Domain string
+
+	// Secure sets the 'Secure' attribute on the session cookie. The default
+	// value is false. It's recommended that you set this to true and serve
+	// all requests over HTTPS in production environments.
+	Secure bool
+
+	// HttpOnly sets the 'HttpOnly' attribute on the session cookie. The
+	// default value is true. Having HttpOnly set to true can help prevent
+	// against XSS attacks.
+	HttpOnly bool
+
+	// SameSite controls the value of the 'SameSite' attribute on the session
+	// cookie. By default, this is set to http.SameSiteLaxMode. If you want
+	// no SameSite attribute or value in the session cookie then you should
+	// set this to 0. Available options for the 'SameSite' attribute are
+	// SameSiteDefaultMode, SameSiteLaxMode, SameSiteStrictMode and SameSiteNoneMode.
+	// Having SameSite set to http.SameSiteStrictMode can help protect against
+	// CSRF attacks.
+	SameSite http.SameSite
+
+	// Persist sets whether the session cookie should be retained after a
+	// user closes their browser (default value is true.) The appropriate
+	// 'Expires' and 'MaxAge' values will be added to the session cookie.
+	Persist bool
+}
+
 // NewCookie is a helper that wraps the creation of a new cookie
 // and returns a filled out *http.Cookie instance that can be
-// modified if need be. This is meant to just set up some basic
+// modified if need be. This is meant to just put up some basic
 // defaults.
 func NewCookie(name, value, domain string, expires time.Time) *http.Cookie {
 	return &http.Cookie{
@@ -21,9 +65,9 @@ func NewCookie(name, value, domain string, expires time.Time) *http.Cookie {
 		Expires:    expires,
 		RawExpires: "",
 		MaxAge:     CookieMaxAge(expires),
-		Secure:     false,                   // set to true, if using TLS (false otherwise)
-		HttpOnly:   true,                    // protects against XSS attacks
-		SameSite:   http.SameSiteStrictMode, // protects against CSRF attacks
+		Secure:     false,                // put to true, if using TLS (false otherwise)
+		HttpOnly:   true,                 // protects against XSS attacks
+		SameSite:   http.SameSiteLaxMode, // protects against CSRF attacks
 		Raw:        "",
 		Unparsed:   nil,
 	}

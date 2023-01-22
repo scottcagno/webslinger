@@ -2,9 +2,6 @@ package sessions
 
 import (
 	"context"
-	"log"
-	"runtime"
-	"strings"
 	"sync"
 	"time"
 )
@@ -14,89 +11,87 @@ const (
 	tickerDefault  = 10 * time.Second
 )
 
-var ssOnce sync.Once
-
-var DefaultSessionStore = &defaultSessionStore
-
-var defaultSessionStore sessionStore
-
 type sessionStore struct {
 	timeout  time.Duration
 	sessions *sync.Map
-	ticker   *time.Ticker
-	ctx      context.Context
-	cancel   context.CancelFunc
+
+	ticker *time.Ticker
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func openSessionStore(timeout time.Duration) *sessionStore {
-	ssOnce.Do(
-		func() {
-			defaultSessionStore = *initSessionStore(timeout)
-		},
-	)
-	return &defaultSessionStore
+	ss := initSessionStore(timeout)
+	go ss.cleanupRoutine()
 }
 
-func initSessionStore(timeout time.Duration) *sessionStore {
-	if timeout < minimumTimeout {
-		timeout = minimumTimeout
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	ss := &sessionStore{
-		timeout:  timeout,
-		sessions: new(sync.Map),
-		ticker:   time.NewTicker(tickerDefault),
-		ctx:      ctx,
-		cancel:   cancel,
-	}
-	DefaultSessionStore = ss
-	go ss.cleanUpRoutine()
-	runtime.SetFinalizer(ss, (*sessionStore).close)
-	return ss
+func (s *sessionStore) New(token string) Session {
+
 }
 
-func (ss *sessionStore) newSession() *Session {
-	return newSession(ss.timeout)
+func (s *sessionStore) Find(token string) (Session, error) {
+	sess, found := s.sessions.Load(token)
+	if !found {
+		return nil, nil
+	}
+	sess.(*sessionData)
+	return sess, nil
+}
+
+func (s *sessionStore) Save(token string, session Session, expiry time.Time) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *sessionStore) Delete(token string) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+/*
+
+func (ss *sessionStore) newSession() Session {
+	return newSessionData(ss.timeout)
 }
 
 // getSession takes a SessionID and attempts to locate the
 // matching *Session. If a matching *Session can be found
 // it is returned along with a boolean indicating weather or
 // not the session was found.
-func (ss *sessionStore) getSession(sid SessionID) (*Session, bool) {
+func (ss *sessionStore) getSession(sid SessionID) (Session, bool) {
 	session, found := ss.sessions.Load(sid)
 	if !found {
 		return nil, false
 	}
-	return session.(*Session), true
+	return session.(Session), true
 }
 
 // saveSession takes a *Session and persists it to the underlying sessionStore.
-func (ss *sessionStore) saveSession(session *Session) {
+func (ss *sessionStore) saveSession(session Session) {
 	// If the session is nil, do nothing the checkForExpiredSessions
 	// will handle any of the extra cleanup necessary.
 	if session == nil {
 		return
 	}
 	// If the session is expired, remove it and return.
-	if session.IsExpired() {
-		ss.sessions.Delete(session.ID)
+	if session.ExpiresIn() < 1 {
+		ss.sessions.Delete(session.ID())
 		return
 	}
 	// Otherwise, bump the expiry time and save it.
-	session.Expires = time.Now().Add(ss.timeout)
-	ss.sessions.Store(session.ID, session)
+	session.Expires(time.Now().Add(ss.timeout))
+	ss.sessions.Store(session.ID(), session)
 }
 
 // killSession takes a *Session and removes it from the underlying sessionStore.
-func (ss *sessionStore) killSession(session *Session) {
+func (ss *sessionStore) killSession(session Session) {
 	// If the session is nil, do nothing the checkForExpiredSessions
 	// will handle any of the extra cleanup necessary.
 	if session == nil {
 		return
 	}
 	// Otherwise, remove the session from the store.
-	ss.sessions.Delete(session.ID)
+	ss.sessions.Delete(session.ID())
 }
 
 func (ss *sessionStore) cleanUpRoutine() {
@@ -110,7 +105,7 @@ func (ss *sessionStore) cleanUpRoutine() {
 			log.Printf("Checking for expired sessions: %v\n", t)
 			ss.sessions.Range(
 				func(sid, session any) bool {
-					if session.(*Session).IsExpired() {
+					if session.(Session).ExpiresIn() < 1 {
 						ss.sessions.Delete(sid)
 					}
 					return true
@@ -150,7 +145,7 @@ func (ss *sessionStore) String() string {
 	ss.sessions.Range(
 		func(k, v any) bool {
 			if k != nil && v != nil {
-				if session, ok := v.(*Session); ok {
+				if session, ok := v.(Session); ok {
 					sb.WriteString(session.String())
 					sb.WriteByte('\n')
 				}
@@ -160,3 +155,5 @@ func (ss *sessionStore) String() string {
 	)
 	return sb.String()
 }
+
+*/

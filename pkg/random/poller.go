@@ -49,9 +49,6 @@ func (p *Poller) startPolling() {
 				p.runPollingFunc(t)
 			case <-p.tickerStop: // stopping the ticker
 				break
-				// if v == true {
-				// 	break
-				// }
 			}
 		}
 	}()

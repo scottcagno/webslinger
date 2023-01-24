@@ -11,41 +11,110 @@ type Thing struct {
 	Name string `json:"name"`
 }
 
-func TestGetSingletonNonPtrNoConstructor(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		t1 := GetSingleton[Thing](nil)
-		addr(t1)
-	}
+func MakeThing() *Thing {
+	return &Thing{}
 }
 
-func TestGetSingletonPtrToNoConstructor(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		t1 := GetSingleton[*Thing](nil)
-		t1.ID = 5
-		addr(t1)
+func TestGetSingletonNoConstructor(t *testing.T) {
+	// get instance, and modify something
+	v1 := Singleton[Thing](nil)
+	v1.ID = 25
+	// modify something
+
+	// get another instance to check to see if it
+	// is the same one
+	v2 := Singleton[Thing](nil)
+	if v2.ID != v1.ID {
+		t.Error("singleton did not produce a singleton")
 	}
+	// modify again...
+	v2.Name = "Dr Manhattan"
+
+	// get another instance to check to see if is
+	// still the same one
+	v3 := Singleton[Thing](nil)
+	if v3.Name != v2.Name {
+		t.Error("singleton did not produce a singleton")
+	}
+	if v3.ID != v2.ID {
+		t.Error("singleton did not produce a singleton")
+	}
+	if v1.Name != v3.Name || v1.Name != v2.Name {
+		t.Error("singleton did not produce a singleton")
+	}
+	if v3.ID != v1.ID {
+		t.Error("singleton did not produce a singleton")
+	}
+	fmt.Printf("v1: %p %+v\n", v1, v1)
+	fmt.Printf("v2: %p %+v\n", v2, v2)
+	fmt.Printf("v3: %p %+v\n", v3, v3)
+}
+
+func TestGetSingletonWithConstructor(t *testing.T) {
+	// get instance, and modify something
+	v1 := Singleton(MakeThing)
+	v1.ID = 25
+	// modify something
+
+	// get another instance to check to see if it
+	// is the same one
+	v2 := Singleton(MakeThing)
+	if v2.ID != v1.ID {
+		t.Error("singleton did not produce a singleton")
+	}
+	// modify again...
+	(*v2).Name = "Dr Manhattan"
+
+	// get another instance to check to see if is
+	// still the same one
+	v3 := Singleton(MakeThing)
+	if v3.Name != v2.Name {
+		t.Error("singleton did not produce a singleton")
+	}
+	if v3.ID != v2.ID {
+		t.Error("singleton did not produce a singleton")
+	}
+	if v1.Name != v3.Name || v1.Name != v2.Name {
+		t.Error("singleton did not produce a singleton")
+	}
+	if v3.ID != v1.ID {
+		t.Error("singleton did not produce a singleton")
+	}
+	fmt.Printf("v1: %p %+v\n", v1, v1)
+	fmt.Printf("v2: %p %+v\n", v2, v2)
+	fmt.Printf("v3: %p %+v\n", v3, v3)
 }
 
 var result any
 
-func BenchmarkGetSingletonNonPtrNoConstructor(b *testing.B) {
-	var v Thing
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		for j := 0; j < 10; j++ {
-			v = GetSingleton[Thing](nil)
-		}
-	}
-	result = v
-}
-
-func BenchmarkGetSingletonPtrToNoConstructor(b *testing.B) {
+func BenchmarkGetSingletonNoConstructor(b *testing.B) {
 	var v *Thing
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 10; j++ {
-			v = GetSingleton[*Thing](nil)
+			v = Singleton[Thing](nil)
+			if v.ID != j {
+				b.Error("singleton did not produce a singleton")
+			}
+			v.ID++
 		}
+		v.ID = 0
+	}
+	result = v
+}
+
+func BenchmarkGetSingletonWithConstructor(b *testing.B) {
+	var v *Thing
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 10; j++ {
+			v = Singleton(MakeThing)
+			if v.ID != j {
+				b.Error("singleton did not produce a singleton")
+			}
+			v.ID++
+		}
+		v.ID = 0
 	}
 	result = v
 }

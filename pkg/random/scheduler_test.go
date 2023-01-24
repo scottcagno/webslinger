@@ -1,11 +1,12 @@
-package main
+package random
 
 import (
 	"fmt"
+	"testing"
 	"time"
 )
 
-func main() {
+func TestNewScheduler(t *testing.T) {
 	scheduler := NewScheduler(
 		func(msg string) {
 			fmt.Println(msg)

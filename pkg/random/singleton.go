@@ -12,13 +12,17 @@ import (
 var singletons sync.Map
 
 // Singleton returns a singleton of T.
-func Singleton[T any]() (t *T) {
+func Singleton[T any](con func() *T) (t *T) {
 	hash := reflect.TypeOf(t)
 	v, ok := singletons.Load(hash)
 	if ok {
 		return v.(*T)
 	}
-	v = new(T)
+	if con != nil {
+		v = con()
+	} else {
+		v = new(T)
+	}
 	v, _ = singletons.LoadOrStore(hash, v)
 	return v.(*T)
 }

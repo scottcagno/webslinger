@@ -5,16 +5,20 @@ import (
 	"sync"
 )
 
-var singletonCache sync.Map
-
 // GetSingleton creates a "singleton"--it ensures that it can only
 // ever be created one time, and all access is to the same version.
-func GetSingleton[T any]() (t *T) {
+// It accepts an optional constructor function (or nil) and in the
+// case where a constructor function is provided it will use it.
+var singletons sync.Map
+
+// Singleton returns a singleton of T.
+func Singleton[T any]() (t *T) {
 	hash := reflect.TypeOf(t)
-	instance, hasInstance := singletonCache.Load(hash)
-	if !hasInstance {
-		instance = new(T)
-		instance, _ = singletonCache.LoadOrStore(hash, instance)
+	v, ok := singletons.Load(hash)
+	if ok {
+		return v.(*T)
 	}
-	return instance.(*T)
+	v = new(T)
+	v, _ = singletons.LoadOrStore(hash, v)
+	return v.(*T)
 }

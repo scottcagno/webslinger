@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -46,21 +47,39 @@ type SessionManager struct {
 	// error page, or redirects to a certain path.
 	ErrorFunc func(http.ResponseWriter, *http.Request, error)
 
-	// codec is the codec that is used to encode and decode data to and from
-	// the underlying store and the local session manager session type.
-	codec Codec
+	// Codec is the Codec that is used to encode and decode data to and from
+	// the underlying Store and the local session manager session type.
+	Codec Codec
 
-	// store controls the session store, where the session data is persisted.
-	store SessionStore
+	// Store controls the session Store, where the session data is persisted.
+	Store SessionStore
 
 	// ctxKey is the key used to set and retrieve the session data from a
 	// context.Context. It's automatically generated to ensure uniqueness.
 	ctxKey ctxKey
 }
 
-// OpenSessionManager instantiates and returns a new SessionManager
-func OpenSessionManager(timeout, lifetime time.Duration) *SessionManager {
-	return initSessionManager(timeout, lifetime)
+func NewSessionManager() *SessionManager {
+	return &SessionManager{
+		IdleTimeout: 0,
+		Lifetime:    24 * time.Hour,
+		Cookie: CookieConfig{
+			Name:     "session",
+			Path:     "/",
+			Domain:   "",
+			Secure:   false,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Persist:  true,
+		},
+		ErrorFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			log.Output(2, err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		},
+		Codec:  GobCodec{},
+		Store:  NewMemoryStoreWithInterval(15 * time.Minute),
+		ctxKey: generateContextKey(),
+	}
 }
 
 // LoadAndSave provides middleware which automatically loads and saves session
@@ -81,7 +100,7 @@ func (sm *SessionManager) LoadAndSave(next http.Handler) http.Handler {
 
 			// Get an up-to-date version of the context.Context
 			// that is associated with this session from the
-			// session store.
+			// session Store.
 			ctx, err := sm.Load(r.Context(), token)
 			if err != nil {
 				sm.ErrorFunc(w, r, err)
@@ -135,12 +154,12 @@ func (sm *SessionManager) LoadAndSave(next http.Handler) http.Handler {
 	)
 }
 
-// Load retrieves the session data for the given token from the session store,
+// Load retrieves the session data for the given token from the session Store,
 // and returns a new context.Context containing the session data. If no matching
 // token is found then this will create a new session.
 func (sm *SessionManager) Load(ctx context.Context, token string) (context.Context, error) {
 	// Check the context for a cached session and return it.
-	_, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	_, ok := ctx.Value(sm.ctxKey).(*session)
 	if ok {
 		return ctx, nil
 	}
@@ -150,10 +169,10 @@ func (sm *SessionManager) Load(ctx context.Context, token string) (context.Conte
 		// Return a new session instance wrapped inside a context
 		return context.WithValue(ctx, sm.ctxKey, newSessionData(sm.Lifetime)), nil
 	}
-	// Otherwise, we need to check the store using the provided token.
-	b, err := sm.store.Find(token)
+	// Otherwise, we need to check the Store using the provided token.
+	b, err := sm.Store.Find(token)
 	if err != nil {
-		// We go an error from the store
+		// We go an error from the Store
 		if err == ErrSessionNotFound {
 			// Session was not found, we have to create a new instance and return it
 			// inside a new context
@@ -168,14 +187,14 @@ func (sm *SessionManager) Load(ctx context.Context, token string) (context.Conte
 		return nil, err
 	}
 	// Initialize a new session data type
-	sess := &sessionData{
+	sess := &session{
 		token:   token,
 		expires: expires,
 		state:   unmodified,
 		data:    data,
 	}
 	// Mark the session data as modified if an idle timeout is being used. This
-	// will force the session data to be re-committed to the session store with
+	// will force the session data to be re-committed to the session Store with
 	// a new expiry time.
 	if sm.IdleTimeout > 0 {
 		sess.state = modified
@@ -186,11 +205,11 @@ func (sm *SessionManager) Load(ctx context.Context, token string) (context.Conte
 
 var errNoSessionDataFoundInContext = errors.New("session manager: no session data found in context")
 
-// Save saves the session data to the session store and returns the session
+// Save saves the session data to the session Store and returns the session
 // token, and expiry time.
 func (sm *SessionManager) Save(ctx context.Context) (string, time.Time, error) {
 	// Get the session data from the context
-	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	sess, ok := ctx.Value(sm.ctxKey).(*session)
 	if !ok {
 		panic(errNoSessionDataFoundInContext)
 	}
@@ -205,7 +224,7 @@ func (sm *SessionManager) Save(ctx context.Context) (string, time.Time, error) {
 		}
 		sess.token = token
 	}
-	// Encode the session data, so we can save it back to the store
+	// Encode the session data, so we can save it back to the Store
 	b, err := sm.Codec.Encode(sess.expires, sess.data)
 	if err != nil {
 		return "", time.Time{}, err
@@ -221,20 +240,20 @@ func (sm *SessionManager) Save(ctx context.Context) (string, time.Time, error) {
 			expiry = ie
 		}
 	}
-	// Save the session data to the underlying store
-	err = sm.store.Save(sess.token, b, expiry)
+	// Save the session data to the underlying Store
+	err = sm.Store.Save(sess.token, b, expiry)
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	return sess.token, expiry, nil
 }
 
-// Destroy deletes the session data from the underlying store and sets
+// Destroy deletes the session data from the underlying Store and sets
 // the session status to destroyed. Any further action in the same
 // request chain will result in the creation of a new session.
 func (sm *SessionManager) Destroy(ctx context.Context) error {
 	// Get the session data from the context
-	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	sess, ok := ctx.Value(sm.ctxKey).(*session)
 	if !ok {
 		panic(errNoSessionDataFoundInContext)
 	}
@@ -242,7 +261,7 @@ func (sm *SessionManager) Destroy(ctx context.Context) error {
 	sess.lock.Lock()
 	defer sess.lock.Unlock()
 	// Call the stores delete method
-	err := sm.store.Delete(sess.token)
+	err := sm.Store.Delete(sess.token)
 	if err != nil {
 		return err
 	}
@@ -262,7 +281,7 @@ func (sm *SessionManager) Destroy(ctx context.Context) error {
 // to the `modified` state.
 func (sm *SessionManager) Put(ctx context.Context, key string, val any) {
 	// Get the session data from the context
-	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	sess, ok := ctx.Value(sm.ctxKey).(*session)
 	if !ok {
 		panic(errNoSessionDataFoundInContext)
 	}
@@ -273,7 +292,7 @@ func (sm *SessionManager) Put(ctx context.Context, key string, val any) {
 
 func (sm *SessionManager) Get(ctx context.Context, key string) any {
 	// Get the session data from the context
-	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	sess, ok := ctx.Value(sm.ctxKey).(*session)
 	if !ok {
 		panic(errNoSessionDataFoundInContext)
 	}
@@ -290,7 +309,7 @@ func (sm *SessionManager) Get(ctx context.Context, key string) any {
 // updates the state to `modified` accordingly.
 func (sm *SessionManager) Del(ctx context.Context, key string) {
 	// Get the session data from the context
-	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	sess, ok := ctx.Value(sm.ctxKey).(*session)
 	if !ok {
 		panic(errNoSessionDataFoundInContext)
 	}
@@ -303,7 +322,7 @@ func (sm *SessionManager) Del(ctx context.Context, key string) {
 // and updates the state to `modified` accordingly.
 func (sm *SessionManager) Clear(ctx context.Context) {
 	// Get the session data from the context
-	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	sess, ok := ctx.Value(sm.ctxKey).(*session)
 	if !ok {
 		panic(errNoSessionDataFoundInContext)
 	}
@@ -396,87 +415,3 @@ func generateContextKey() ctxKey {
 	atomic.AddUint64(&ctxKeyID, 1)
 	return ctxKey("session." + strconv.FormatUint(ctxKeyID, 10))
 }
-
-/*
-
-// NewSession creates and returns a new *Session
-func (sm *SessionManager) NewSession() Session {
-	return sm.store.newSession()
-}
-
-// MustGetSession checks for an existing session in the store using a cookie
-// with the same name that the session manager was provided with. If one is
-// not found, then it creates a new one and returns it.
-func (sm *SessionManager) MustGetSession(w http.ResponseWriter, r *http.Request) (Session, error) {
-	// Check for an existing session by looking in the request for a cookie.
-	c, err := r.Cookie(sm.name)
-	if err == http.ErrNoCookie {
-		// No cookie was found, we will return a new session
-		return sm.store.newSession(), nil
-	}
-	// Otherwise, we have found a session cookie, but we must check to ensure
-	// that it is not expired.
-	sess, found := sm.store.getSession(SessionID(c.Value))
-	if !found {
-		// No session has been found, we will return an error
-		return nil, ErrNoSession
-	}
-	// Otherwise, we have successfully located an existing session that we can
-	// return along with a nil error
-	return sess, nil
-}
-
-// GetSession checks for an existing session in the store using a cookie
-// with the same name that the session manager was provided with.
-func (sm *SessionManager) GetSession(w http.ResponseWriter, r *http.Request) (Session, error) {
-	// Check for an existing session by looking in the request for a cookie.
-	c, err := r.Cookie(sm.name)
-	if err == http.ErrNoCookie {
-		// No cookie was found, we will return an error
-		return nil, err
-	}
-	// Otherwise, we have found a session cookie, but we must check to ensure
-	// that it is not expired.
-	sess, found := sm.store.getSession(SessionID(c.Value))
-	if !found {
-		// No session has been found, we will return an error
-		return nil, ErrNoSession
-	}
-	// Otherwise, we have successfully located an existing session that we can
-	// return along with a nil error
-	return sess, nil
-}
-
-// SaveSession persists the provided session. If it receives a nil *Session, it will
-// return an error.
-func (sm *SessionManager) SaveSession(w http.ResponseWriter, r *http.Request, sess sessionData) error {
-	if sess == nil {
-		return ErrNoSession
-	}
-	// persist the session to the store
-	sm.store.saveSession(sess)
-	// update the session cookie
-	http.SetCookie(w, NewCookie(sm.name, sess.token, sm.domain, time.Unix(int64(sess.ExpiresIn()), 0)))
-	return nil
-}
-
-// KillSession removes an existing session using the SessionID.
-func (sm *SessionManager) KillSession(w http.ResponseWriter, r *http.Request, sess Session) error {
-	if sess == nil {
-		return ErrNoSession
-	}
-	// Check for an existing session by looking in the request for a cookie.
-	// If we find a cookie we must expire it.
-	c, err := r.Cookie(sm.name)
-	if c == nil || err == http.ErrNoCookie {
-		return nil
-	}
-	// Remove the session from the store, and put the updated cookie
-	sm.store.killSession(sess)
-	c.Expires = time.Now()
-	c.MaxAge = -1
-	http.SetCookie(w, c)
-	return nil
-}
-
-*/

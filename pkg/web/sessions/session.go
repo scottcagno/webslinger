@@ -16,8 +16,8 @@ const (
 	destroyed
 )
 
-// sessionData represents a server side session.
-type sessionData struct {
+// session represents a server side session.
+type session struct {
 	token   string
 	expires time.Time
 	state   sessionState
@@ -27,8 +27,8 @@ type sessionData struct {
 }
 
 // newSessionData creates and returns a new *Session
-func newSessionData(expires time.Duration) *sessionData {
-	return &sessionData{
+func newSessionData(expires time.Duration) *session {
+	return &session{
 		expires: time.Now().Add(expires).UTC(),
 		state:   unmodified,
 		data:    make(map[string]any),
@@ -38,7 +38,7 @@ func newSessionData(expires time.Duration) *sessionData {
 // get takes a key of type string and returns a value of
 // any type along with a boolean indicating true if the
 // value was located and false if it was not found.
-func (s *sessionData) get(k string) (any, bool) {
+func (s *session) get(k string) (any, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	v, ok := s.data[k]
@@ -47,7 +47,7 @@ func (s *sessionData) get(k string) (any, bool) {
 
 // put takes a key of type string and value of any type
 // and adds or updates it in the Session object.
-func (s *sessionData) put(k string, v any) {
+func (s *session) put(k string, v any) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.data[k] = v
@@ -56,7 +56,7 @@ func (s *sessionData) put(k string, v any) {
 
 // del takes a key of type string and attempts to locate
 // and remove the key and associated value from the Session.
-func (s *sessionData) del(k string) {
+func (s *session) del(k string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	_, ok := s.data[k]
@@ -69,7 +69,7 @@ func (s *sessionData) del(k string) {
 
 // clear removes all data for the current session. The session token
 // and lifetime are unaffected.
-func (s *sessionData) clear() {
+func (s *session) clear() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if len(s.data) == 0 {
@@ -82,7 +82,7 @@ func (s *sessionData) clear() {
 }
 
 // String implements the Stringer interface for a Session
-func (s *sessionData) String() string {
+func (s *session) String() string {
 	var sb strings.Builder
 	sb.Grow(64)
 	sb.WriteString("token=")
@@ -92,12 +92,12 @@ func (s *sessionData) String() string {
 	return sb.String()
 }
 
-func (sm *SessionManager) addSessionData(ctx context.Context, sess *sessionData) context.Context {
+func (sm *SessionManager) addSessionData(ctx context.Context, sess *session) context.Context {
 	return context.WithValue(ctx, sm.ctxKey, sess)
 }
 
-func (sm *SessionManager) getSessionData(ctx context.Context) *sessionData {
-	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+func (sm *SessionManager) getSessionData(ctx context.Context) *session {
+	sess, ok := ctx.Value(sm.ctxKey).(*session)
 	if !ok {
 		panic(errNoSessionDataFoundInContext)
 	}
@@ -105,7 +105,7 @@ func (sm *SessionManager) getSessionData(ctx context.Context) *sessionData {
 }
 
 func (sm *SessionManager) getSessionState(ctx context.Context) sessionState {
-	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	sess, ok := ctx.Value(sm.ctxKey).(*session)
 	if !ok {
 		panic(errNoSessionDataFoundInContext)
 	}

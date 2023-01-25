@@ -71,18 +71,7 @@ func (p *Poller) StopPolling() {
 }
 
 func (p *Poller) RestartPolling() {
-	// stop the poller
-	p.StopPolling()
-
-	if p.ticker == nil {
-		// set new ticker
-		p.ticker = time.NewTicker(p.interval)
-	} else {
-		// otherwise, reset existing ticker
-		p.ticker.Reset(p.interval)
-	}
-	// restart the poller
-	p.startPolling()
+	p.RestartPollerWithInterval(p.interval)
 }
 
 func (p *Poller) RestartPollerWithInterval(interval time.Duration) {

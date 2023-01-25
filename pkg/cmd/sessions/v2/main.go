@@ -33,7 +33,7 @@ func (s *MySession) LoadAndSaveHeader(next http.Handler) http.Handler {
 			next.ServeHTTP(bw, sr)
 
 			if s.Status(ctx) == scs.Modified {
-				token, expiry, err := s.Commit(ctx)
+				token, expiry, err := s.Save(ctx)
 				if err != nil {
 					log.Output(2, err.Error())
 					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

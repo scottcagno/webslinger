@@ -72,7 +72,3 @@ func TestPollerWithErr(t *testing.T) {
 	p.StopPolling()
 	time.Sleep(5 * time.Second)
 }
-
-func TestTimeoutMap(t *testing.T) {
-
-}

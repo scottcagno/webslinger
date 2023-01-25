@@ -1,9 +1,7 @@
 package sessions
 
 import (
-	"encoding/base64"
-	"encoding/gob"
-	"math/rand"
+	"context"
 	"strings"
 	"sync"
 	"time"
@@ -69,6 +67,8 @@ func (s *sessionData) del(k string) {
 	s.state = modified
 }
 
+// clear removes all data for the current session. The session token
+// and lifetime are unaffected.
 func (s *sessionData) clear() {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -92,56 +92,26 @@ func (s *sessionData) String() string {
 	return sb.String()
 }
 
-// Decode should take a raw byte slice and return an expiry time,
-// session data, and any potential errors.
-func (s *sessionData) Decode(b []byte) (expiry time.Time, data map[string]any, err error) {
-	gob.NewEncoder()
+func (sm *SessionManager) addSessionData(ctx context.Context, sess *sessionData) context.Context {
+	return context.WithValue(ctx, sm.ctxKey, sess)
 }
 
-// Encode should take an expiry time, session data, and return an
-// encoded byte slice, along with any potential errors.
-func (s *sessionData) Encode(expiry time.Time, data map[string]any) ([]byte, error)
-
-// ExpiresIn returns a duration of time until this
-// Session is to be marked as expired.
-func (s *sessionData) ExpiresIn() time.Duration {
-	return time.Until(s.expires)
-}
-
-// IsExpired returns a boolean resulting in true if
-// the Session time to live is expired.
-func (s *sessionData) IsExpired() bool {
-	return time.Until(s.expires) < 1
-}
-
-func (s *sessionData) Expires(at time.Time) {
-	s.expires = at
-}
-
-// ascii is a constant value of all the basic alphanumeric
-// characters and is used in the NewSessionID function to
-// create and return a new SessionID.
-const ascii = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-// SessionID represents a primary session ID key.
-// type SessionID [32]byte
-type SessionID string
-
-// NewSessionID creates and returns a (hopefully) unique ID
-// that can be used to ID a Session object.
-func NewSessionID() SessionID {
-	sid := make([]byte, 32, 32)
-	for i := range sid {
-		sid[i] = ascii[rand.Intn(len(ascii))]
+func (sm *SessionManager) getSessionData(ctx context.Context) *sessionData {
+	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	if !ok {
+		panic(errNoSessionDataFoundInContext)
 	}
-	return SessionID(sid)
+	return sess
 }
 
-func generateToken() (string, error) {
-	b := make([]byte, 32)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
+func (sm *SessionManager) getSessionState(ctx context.Context) sessionState {
+	sess, ok := ctx.Value(sm.ctxKey).(*sessionData)
+	if !ok {
+		panic(errNoSessionDataFoundInContext)
 	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
+	sess.lock.Lock()
+	defer sess.lock.Lock()
+	var state sessionState
+	state = sess.state
+	return state
 }

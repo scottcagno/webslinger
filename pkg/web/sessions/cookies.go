@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// SessionCookie contains the configuration settings for session cookies.
-type SessionCookie struct {
+// CookieConfig contains the configuration settings for session cookies.
+type CookieConfig struct {
 
 	// Name sets the name of the session cookie. It should not contain
 	// whitespace, commas, colons, semicolons, backslashes, the equals

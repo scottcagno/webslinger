@@ -19,10 +19,10 @@ func initSessionManager(timeout, lifetime time.Duration) *SessionManager {
 			defaultSessionManager = SessionManager{
 				IdleTimeout: timeout,
 				Lifetime:    lifetime,
-				Cookie:      SessionCookie{},
+				Cookie:      CookieConfig{},
 				ErrorFunc:   nil,
 				store:       openSessionStore(timeout),
-				contextKey:  generateContextKey(),
+				ctxKey:      generateContextKey(),
 			}
 		},
 	)

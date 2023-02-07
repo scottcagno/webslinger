@@ -14,10 +14,6 @@ var (
 	ErrTokenAlg = errors.New("jwt: unexpected token algorithm")
 )
 
-// PrivateKey is a semi-generic type responsible for signing the token.
-type PrivateKey = crypto.PrivateKey
-
-// PublicKey is a semi-generic type responsible for verifying the token.
-type PublicKey interface {
-	Equal(x crypto.PublicKey) bool
+func decode(alg Alg, key crypto.PublicKey, token []byte) (*Token, error) {
+	return &Token{}, nil
 }

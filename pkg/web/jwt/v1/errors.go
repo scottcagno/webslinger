@@ -1,4 +1,4 @@
-package jwt
+package v1
 
 import (
 	"errors"

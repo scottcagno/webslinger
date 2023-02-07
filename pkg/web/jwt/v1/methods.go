@@ -1,4 +1,4 @@
-package jwt
+package v1
 
 import (
 	"crypto"
@@ -120,12 +120,14 @@ var (
 	HS512 = &SigningMethod{Alg: ALG_HS512, Hash: crypto.SHA512}
 )
 
-func (s *SigningMethod) signHMAC(token *Token, key PrivateKey) (string, error) {
-
+func (s *SigningMethod) signHMAC(token string, key PrivateKey) (string, error) {
+	// TODO implement me
+	panic("implement me")
 }
 
 func (s *SigningMethod) verifyHMAC(token string, key PublicKey) error {
-
+	// TODO implement me
+	panic("implement me")
 }
 
 // ECDSA Signing Methods
@@ -135,7 +137,7 @@ var (
 	ES512 = &SigningMethod{Alg: ALG_ES512, Hash: crypto.SHA512}
 )
 
-func (s *SigningMethod) signECDSA(token *Token, key PrivateKey) (string, error) {
+func (s *SigningMethod) signECDSA(token string, key PrivateKey) (string, error) {
 	return "", ErrTokenSignatureInvalid
 }
 

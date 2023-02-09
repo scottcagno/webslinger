@@ -2,6 +2,7 @@ package v4
 
 import (
 	"crypto"
+	"sync"
 )
 
 // SigningMethod is an interface for implementing singing and verifying methods
@@ -17,4 +18,14 @@ type SigningMethod interface {
 	// Verify should take a token and signature and verify the token using the
 	// provided signature.
 	Verify(partialToken []byte, signature []byte, key crypto.PublicKey) error
+}
+
+var methods sync.Map
+
+func GetSigningMethod(name string) SigningMethod {
+	method, found := methods.Load(name)
+	if !found {
+		return nil
+	}
+	return method.(SigningMethod)
 }

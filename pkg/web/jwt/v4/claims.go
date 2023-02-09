@@ -1,7 +1,28 @@
 package v4
 
-type NumericDate = int64
+import (
+	"errors"
+	"time"
+)
 
+type NumericDate int64
+
+func (n NumericDate) Time() time.Time {
+	return time.Unix(int64(n), 0)
+}
+
+// SkipValidation can be  used as a return value from ValidateClaimFunc to
+// indicate that the claim in the call is to be skipped. It is not returned
+// as an error by any function.
+var SkipValidation = errors.New("skip validation for this claim")
+
+// ValidateClaimFunc is the type of function called by ValidateClaims in order
+// to validate a claims set. It makes it possible to implement custom claims
+// validation. If you do not want a claim to be validated the SkipValidation
+// error is returned.
+type ValidateClaimFunc func(name string, claim any) error
+
+// ClaimsSet is an interface for a set of claims.
 type ClaimsSet interface {
 
 	// GetISS is the issuer of the JWT.
@@ -11,7 +32,7 @@ type ClaimsSet interface {
 	GetSUB() (string, error)
 
 	// GetAUD is the audience (Recipient for which the JWT is intended.)
-	GetAUD() ([]string, error)
+	GetAUD() (string, error)
 
 	// GetEXP is the time after which the JWT expires.
 	GetEXP() (NumericDate, error)
@@ -28,14 +49,24 @@ type ClaimsSet interface {
 	GetJTI() (string, error)
 }
 
+// CustomClaimsSet is an interface for representing a custom claim, or a
+// set of custom claims. It is intended to be used for building custom
+// claim validation in addition to the integrated ClaimsSet.
+type CustomClaimsSet interface {
+	ClaimsSet
+	Validate() error
+}
+
+// RegisteredClaims is the default set of registered claims. It can be used
+// in addition to custom claims by embedding the registered claims in
 type RegisteredClaims struct {
-	Issuer         string   `json:"iss,omitempty"`
-	Subject        string   `json:"sub,omitempty"`
-	Audience       []string `json:"aud,omitempty"`
-	ExpirationTime int64    `json:"exp,omitempty"`
-	NotBeforeTime  int64    `json:"nbf,omitempty"`
-	IssuedAtTime   int64    `json:"iat,omitempty"`
-	JWTID          string   `json:"jti,omitempty"`
+	Issuer         string      `json:"iss,omitempty"`
+	Subject        string      `json:"sub,omitempty"`
+	Audience       string      `json:"aud,omitempty"`
+	ExpirationTime NumericDate `json:"exp,omitempty"`
+	NotBeforeTime  NumericDate `json:"nbf,omitempty"`
+	IssuedAtTime   NumericDate `json:"iat,omitempty"`
+	ID             string      `json:"jti,omitempty"`
 }
 
 func (r *RegisteredClaims) GetISS() (string, error) {
@@ -46,7 +77,7 @@ func (r *RegisteredClaims) GetSUB() (string, error) {
 	return r.Subject, nil
 }
 
-func (r *RegisteredClaims) GetAUD() ([]string, error) {
+func (r *RegisteredClaims) GetAUD() (string, error) {
 	return r.Audience, nil
 }
 
@@ -63,5 +94,82 @@ func (r *RegisteredClaims) GetIAT() (NumericDate, error) {
 }
 
 func (r *RegisteredClaims) GetJTI() (string, error) {
-	return r.JWTID, nil
+	return r.ID, nil
 }
+
+/*
+func shouldSkip(err error) bool {
+	return err == SkipValidation
+}
+
+func validateEXP(exp time.Time, now time.Time, margin time.Duration) bool {
+	return now.Before(exp)
+}
+
+func validateIAT(iat time.Time, now time.Time, margin time.Duration) bool {
+	return !now.Before(iat)
+}
+
+func validateNBF(nbf time.Time, now time.Time, margin time.Duration) bool {
+	return !now.Before(nbf)
+}
+
+func ValidateClaims(claims ClaimsSet) error {
+
+	// Get the current time
+	now := time.Now()
+
+	// Validate ISS
+	iss, err := claims.GetISS()
+	if err != nil && err != SkipValidation {
+		return err
+	}
+
+	// Validate SUB
+	sub, err := claims.GetSUB()
+	if err != nil && err != SkipValidation {
+		return err
+	}
+
+	// Validate AUD
+	aud, err := claims.GetAUD()
+	if err != nil && err != SkipValidation {
+		return err
+	}
+
+	// Validate EXP
+	exp, err := claims.GetEXP()
+	if err != nil && err != SkipValidation {
+		return err
+	}
+	now.Before()
+
+	// Validate NBF
+	nbf, err := claims.GetNBF()
+	if err != nil && err != SkipValidation {
+		return err
+	}
+
+	// Validate IAT
+	iat, err := claims.GetIAT()
+	if err != nil && err != SkipValidation {
+		return err
+	}
+
+	// Validate JTI
+	jti, err := claims.GetJTI()
+	if err != nil && err != SkipValidation {
+		return err
+	}
+
+	// Validate any custom claims set that the
+	// user may have implemented.
+	if custom, ok := claims.(CustomClaimsSet); ok {
+		err = custom.Validate()
+		if err != nil && err != SkipValidation {
+			return err
+		}
+	}
+	return nil
+}
+*/

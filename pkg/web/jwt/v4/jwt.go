@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 )
 
 // token = SigningMethod(
@@ -12,17 +13,19 @@ import (
 // 		Base64URLEncode(payload),
 // 		secret)
 
+type TokenHeader struct {
+	Typ string `json:"typ"`
+	Alg string `json:"alg"`
+}
+
 type Token []byte
 
 func NewToken(alg SigningMethod, claims ClaimsSet, key crypto.PrivateKey) (Token, error) {
 	// create and encode the header
 	dat, err := json.Marshal(
-		struct {
-			Type string `json:"typ"`
-			Alg  string `json:"alg"`
-		}{
-			Type: "JWT",
-			Alg:  alg.Name(),
+		TokenHeader{
+			Typ: "JWT",
+			Alg: alg.Name(),
 		},
 	)
 	if err != nil {
@@ -48,31 +51,98 @@ func NewToken(alg SigningMethod, claims ClaimsSet, key crypto.PrivateKey) (Token
 
 type ValidToken struct {
 	Raw       Token
-	Claims    ClaimsSet
+	Header    TokenHeader
+	Payload   ClaimsSet
 	Method    SigningMethod
 	Signature []byte
+	Valid     bool
 }
 
-func ValidateClaims(token Token) (ClaimsSet, error) {
-	// TODO: implement
-	panic("implement me")
+func (v *Validator) Validate(token Token, claims ClaimsSet, key crypto.PublicKey) (*ValidToken, error) {
 
-	// 1. split token
-	// 2. parse header
-	// 3. validate basic claims
-	// 4. assemble and return claims
+	// Create error type
+	var verr error
+
+	// Parse the initial raw token
+	raw, err := ParseRawToken(token)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify the signature method matches the provided
+	// SigningMethod
+	if raw.Header.Alg != v.Method.Name() {
+		verr = errors.Join(ErrTokenUnverifiable, err)
+		return nil, verr
+	}
+
+	// Validate the claims
+	err = v.ValidateClaims(claims)
+	if err != nil {
+		verr = errors.Join(err, ErrTokenClaimsInvalid)
+		// We should continue on to validating the signature
+	}
+
+	// Validate the final "validation" on the signature
+	partialToken := token[:bytes.LastIndexByte(token, '.')]
+	err = raw.Method.Verify(partialToken, raw.Signature, key)
+	if err != nil {
+		verr = errors.Join(err, ErrTokenSignatureInvalid)
+		// continue
+	}
+
+	if verr != nil {
+		return nil, verr
+	}
+
+	// We have a valid token, return it!
+	raw.Valid = true
+	return raw, nil
 }
 
-func Validate(token Token) (*ValidToken, error) {
-	// TODO: implement
-	panic("implement me")
+func ParseRawToken(token Token) (*ValidToken, error) {
 
-	// 1. split token
-	// 2. verify correct signing method
-	// 3. check for key
-	// 4. validate basic claims
-	// 5. validate using the signing method
-	// 6. assemble and return valid token
+	// Create error type
+	var verr, err error
+
+	// Split the raw token
+	parts := bytes.Split(token, []byte{'.'})
+	if len(parts) != 3 {
+		return nil, ErrTokenMalformed
+	}
+
+	// Initialize a raw token instance
+	var raw ValidToken
+	raw.Raw = token
+
+	// Parse the token header
+	headerBytes := Base64Decode(parts[0])
+	err = json.Unmarshal(headerBytes, &raw.Header)
+	if err != nil {
+		verr = errors.Join(ErrTokenMalformed, err)
+		return nil, verr
+	}
+
+	// Parse the token claims
+	claimsBytes := Base64Decode(parts[1])
+	err = json.Unmarshal(claimsBytes, &raw.Payload)
+	if err != nil {
+		verr = errors.Join(ErrTokenMalformed, err)
+		return nil, verr
+	}
+
+	// Get the signing method (even though it's not verifiable, yet)
+	raw.Method = GetSigningMethod(raw.Header.Alg)
+	if raw.Method == nil {
+		verr = errors.Join(ErrTokenMalformed, err)
+		return nil, verr
+	}
+
+	// Add this signature
+	raw.Signature = parts[2]
+
+	// Return out raw (unverified token)
+	return &raw, verr
 }
 
 func Base64Encode(src []byte) []byte {

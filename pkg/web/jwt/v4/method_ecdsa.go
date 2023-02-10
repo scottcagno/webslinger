@@ -45,6 +45,17 @@ func (s *SigningMethodECDSA) Name() string {
 	return s.name
 }
 
+func (s *SigningMethodECDSA) GenerateKeyPair() *KeyPair {
+	key, err := ecdsa.GenerateKey(s.curve, rand.Reader)
+	if err != nil {
+		return nil
+	}
+	return &KeyPair{
+		PrivateKey: key,
+		PublicKey:  &key.PublicKey,
+	}
+}
+
 func (s *SigningMethodECDSA) Sign(partialToken []byte, key crypto.PrivateKey) ([]byte, error) {
 	ecdsaKey, ok := key.(*ecdsa.PrivateKey)
 	if !ok {

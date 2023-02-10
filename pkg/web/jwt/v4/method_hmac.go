@@ -1,9 +1,27 @@
 package v4
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/hmac"
+	"crypto/rand"
+	"encoding/base64"
 )
+
+type HMACPrivateKey []byte
+type HMACPublicKey []byte
+
+func (k HMACPrivateKey) Public() crypto.PublicKey {
+	return k
+}
+
+func (k HMACPrivateKey) Equal(x crypto.PrivateKey) bool {
+	return bytes.Equal(k, x.([]byte))
+}
+
+func (k HMACPublicKey) Equal(x crypto.PublicKey) bool {
+	return bytes.Equal(k, x.([]byte))
+}
 
 // SigningMethodHMAC implements the HMAC-SHA family of signing methods.
 // Expects key type of []byte for both signing and validation
@@ -31,10 +49,27 @@ func init() {
 		name: "HS512",
 		hash: crypto.SHA512,
 	}
+
+	RegisterSigningMethod(HS256.Name(), func() SigningMethod { return HS256 })
+	RegisterSigningMethod(HS384.Name(), func() SigningMethod { return HS384 })
+	RegisterSigningMethod(HS512.Name(), func() SigningMethod { return HS512 })
 }
 
 func (s *SigningMethodHMAC) Name() string {
 	return s.name
+}
+
+func (s *SigningMethodHMAC) GenerateKeyPair() *KeyPair {
+	buf := make([]byte, s.hash.Size())
+	_, err := rand.Read(buf)
+	if err != nil {
+		return nil
+	}
+	base64.RawURLEncoding.Encode(buf, buf)
+	return &KeyPair{
+		PrivateKey: HMACPrivateKey(buf),
+		PublicKey:  HMACPublicKey(buf),
+	}
 }
 
 func (s *SigningMethodHMAC) Sign(partialToken []byte, key crypto.PrivateKey) ([]byte, error) {

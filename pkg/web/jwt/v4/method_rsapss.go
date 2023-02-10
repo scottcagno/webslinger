@@ -42,6 +42,17 @@ func (s *SigningMethodRSAPSS) Name() string {
 	return s.name
 }
 
+func (s *SigningMethodRSAPSS) GenerateKeyPair() *KeyPair {
+	key, err := rsa.GenerateKey(rand.Reader, s.hash.Size()*8)
+	if err != nil {
+		panic(err)
+	}
+	return &KeyPair{
+		PrivateKey: key,
+		PublicKey:  &key.PublicKey,
+	}
+}
+
 func (s *SigningMethodRSAPSS) Sign(partialToken []byte, key crypto.PrivateKey) ([]byte, error) {
 	rsaKey, ok := key.(*rsa.PrivateKey)
 	if !ok {

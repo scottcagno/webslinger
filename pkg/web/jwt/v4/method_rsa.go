@@ -32,10 +32,25 @@ func init() {
 		name: "HS512",
 		hash: crypto.SHA512,
 	}
+
+	RegisterSigningMethod(RS256.Name(), func() SigningMethod { return RS256 })
+	RegisterSigningMethod(RS384.Name(), func() SigningMethod { return RS384 })
+	RegisterSigningMethod(RS512.Name(), func() SigningMethod { return RS512 })
 }
 
 func (s *SigningMethodRSA) Name() string {
 	return s.name
+}
+
+func (s *SigningMethodRSA) GenerateKeyPair() *KeyPair {
+	key, err := rsa.GenerateKey(rand.Reader, s.hash.Size()*8)
+	if err != nil {
+		panic(err)
+	}
+	return &KeyPair{
+		PrivateKey: key,
+		PublicKey:  &key.PublicKey,
+	}
 }
 
 func (s *SigningMethodRSA) Sign(partialToken []byte, key crypto.PrivateKey) ([]byte, error) {

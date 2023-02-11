@@ -116,9 +116,9 @@ claims := &jwt.RegisteredClaims{
     Issuer:         "jon doe",
     Subject:        "your mom goes to college",
     Audience:       "anyone",
-    ExpirationTime: NumericDate(exp),
-    NotBeforeTime:  NumericDate(now),
-    IssuedAtTime:   NumericDate(now),
+    ExpirationTime: jwt.NumericDate(exp),
+    NotBeforeTime:  jwt.NumericDate(now),
+    IssuedAtTime:   jwt.NumericDate(now),
     ID:             "25",
 }
 

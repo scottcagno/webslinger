@@ -52,11 +52,14 @@ func (t *Token) Sign(key PrivateKey) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Join()
+	_ = sig
+	// nope..
+	return "", nil
 }
 
 func (t *Token) Verify(token string) error {
-
+	// nope...
+	return nil
 }
 
 // encodeSegment encodes a JWT specific base64url encoding with padding stripped.

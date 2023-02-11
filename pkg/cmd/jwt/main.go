@@ -11,4 +11,5 @@ func main() {
 	tm := jwt.NewTokenManager(method, method.GenerateKeyPair())
 
 	_ = tm
+
 }

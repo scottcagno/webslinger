@@ -111,3 +111,10 @@ func NewToken(alg SigningMethod, claims ClaimsSet, key crypto.PrivateKey) (RawTo
 	// create and return token
 	return bytes.Join([][]byte{partialToken, dat}, []byte{'.'}), nil
 }
+
+func ValidateToken(rawToken RawToken, method SigningMethod, key crypto.PublicKey) (*Token, error) {
+	validator := &Validator{
+		Method: method,
+	}
+	return validator.ValidateToken(rawToken, key)
+}

@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"bytes"
-	"crypto"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -20,48 +19,6 @@ type Token struct {
 	Method    SigningMethod
 	Signature []byte
 	Valid     bool
-}
-
-func (v *validator) ValidateRawToken(raw RawToken, key crypto.PublicKey) (*Token, error) {
-
-	// Create error type
-	var verr error
-
-	// Parse the initial raw rawToken
-	token, err := ParseRawToken(raw)
-	if err != nil {
-		return nil, err
-	}
-
-	// Verify the signature method matches the provided
-	// SigningMethod
-	if token.Header.Alg != v.Method.Name() {
-		verr = errors.Join(ErrTokenUnverifiable, err)
-		return nil, verr
-	}
-
-	// ValidateRawToken the claims
-	err = v.ValidateClaims(token.Payload)
-	if err != nil {
-		verr = errors.Join(err, ErrTokenClaimsInvalid)
-		// We should continue on to validating the signature
-	}
-
-	// ValidateRawToken the final "validation" on the signature
-	partialToken := raw[:bytes.LastIndexByte(raw, '.')]
-	err = token.Method.Verify(partialToken, token.Signature, key)
-	if err != nil {
-		verr = errors.Join(err, ErrTokenSignatureInvalid)
-		// continue
-	}
-
-	if verr != nil {
-		return nil, verr
-	}
-
-	// We have a valid rawToken, return it!
-	token.Valid = true
-	return token, nil
 }
 
 func ParseRawToken(raw RawToken) (*Token, error) {

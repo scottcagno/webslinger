@@ -8,7 +8,7 @@ import (
 type TokenManager struct {
 	method SigningMethod
 	keys   *KeyPair
-	validator
+	Validator
 }
 
 func NewTokenManager(method SigningMethod, keys *KeyPair) *TokenManager {
@@ -16,7 +16,7 @@ func NewTokenManager(method SigningMethod, keys *KeyPair) *TokenManager {
 		method: method,
 		keys:   keys,
 	}
-	m.validator = validator{
+	m.Validator = Validator{
 		Margin:      time.Minute,
 		ValidateIAT: false,
 		ExpectedAUD: "",
@@ -36,7 +36,7 @@ func (m *TokenManager) GenerateToken(claims ClaimsSet) (RawToken, error) {
 }
 
 func (m *TokenManager) ValidateToken(raw RawToken) (*Token, error) {
-	token, err := m.validator.ValidateRawToken(raw, m.keys.PublicKey)
+	token, err := m.Validator.ValidateToken(raw, m.keys.PublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ tryCookie:
 	}
 
 	// we have a raw token, lets try to validate it
-	tok, err = m.validator.ValidateRawToken(raw, m.keys.PublicKey)
+	tok, err = m.Validator.ValidateToken(raw, m.keys.PublicKey)
 	if err != nil {
 		return nil, err
 	}

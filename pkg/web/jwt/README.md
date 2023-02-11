@@ -99,7 +99,24 @@ manager := jwt.NewTokenManager(jwt.HS256, keys)
 // Generating a signed token with no claims
 token, err := manager.GenerateToken(nil)
 if err != nil {
-    t.Fatal(err)
+    log.Fatal(err)
+}
+...
+```
+
+### Generate a token directly, verify a token directly
+```go
+...
+// Generating a signed token directly
+token, err := jwt.NewToken(jwt.HS256, claims, privateKey)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Validating a signed token directly
+validToken, err := jwt.ValidateToken(token, jwt.HS256, publicKey)
+if err != nil {
+	log.Fatal(err)
 }
 ...
 ```
@@ -125,10 +142,9 @@ claims := &jwt.RegisteredClaims{
 // Generating a signed token with registered claims
 token, err := manager.GenerateToken(claims)
 if err != nil {
-    t.Fatal(err)
+    log.Fatal(err)
 }
 ```
-
 
 ### Validate a token using the manager
 ```go
@@ -136,9 +152,28 @@ if err != nil {
 // Validate a token using the manager
 validToken, err = manager.ValidateToken(token)
 if err != nil {
-    t.Fatal(err)
+    log.Fatal(err)
 }
 ...
 ```
+
+### Validate a token using the validator directly
+```go
+...
+// Validate a token using the manager
+validator := &jwt.Validator{SigningMethod: jwt.HS256}
+validToken, err := validator.ValidateToken(token, keys.PublicKey)
+if err != nil {
+    return nil, err
+}
+
+// Or simply validate the claims
+err := validator.ValidateClaims(claims)
+if err != nil {
+    log.Fatal(err)
+}
+...
+```
+
 
 

@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-func benchmarkValidateToken(b *testing.B, validator validator, raw RawToken) {
+func benchmarkValidateToken(b *testing.B, validator Validator, raw RawToken) {
 	b.Helper()
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.RunParallel(
 		func(pb *testing.PB) {
 			for pb.Next() {
-				_, err := validator.ValidateRawToken(raw, validator.Method)
+				_, err := validator.ValidateToken(raw, validator.Method)
 				if err != nil {
 					b.Fatal(err)
 				}

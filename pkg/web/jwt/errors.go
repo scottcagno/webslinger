@@ -11,7 +11,7 @@ var (
 	ErrSignatureInvalid = errors.New("alg: signature is invalid")
 )
 
-// validator errors
+// Validator errors
 var (
 	ErrTokenExpired             = errors.New("token expired")
 	ErrTokenNotValidYet         = errors.New("token not valid yet")

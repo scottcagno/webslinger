@@ -21,15 +21,15 @@ var (
 
 func init() {
 	RS256 = &SigningMethodRSA{
-		name: "HS256",
+		name: "RS256",
 		hash: crypto.SHA256,
 	}
 	RS384 = &SigningMethodRSA{
-		name: "HS384",
+		name: "RS384",
 		hash: crypto.SHA384,
 	}
 	RS512 = &SigningMethodRSA{
-		name: "HS512",
+		name: "RS512",
 		hash: crypto.SHA512,
 	}
 
@@ -38,12 +38,14 @@ func init() {
 	RegisterSigningMethod(RS512.Name(), func() SigningMethod { return RS512 })
 }
 
+const rsaBits = 2048
+
 func (s *SigningMethodRSA) Name() string {
 	return s.name
 }
 
 func (s *SigningMethodRSA) GenerateKeyPair() *KeyPair {
-	key, err := rsa.GenerateKey(rand.Reader, s.hash.Size()*8)
+	key, err := rsa.GenerateKey(rand.Reader, rsaBits)
 	if err != nil {
 		panic(err)
 	}

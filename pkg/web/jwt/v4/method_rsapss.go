@@ -36,6 +36,10 @@ func init() {
 		hash: crypto.SHA512,
 		opts: &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash},
 	}
+
+	RegisterSigningMethod(PS256.Name(), func() SigningMethod { return PS256 })
+	RegisterSigningMethod(PS384.Name(), func() SigningMethod { return PS384 })
+	RegisterSigningMethod(PS512.Name(), func() SigningMethod { return PS512 })
 }
 
 func (s *SigningMethodRSAPSS) Name() string {

@@ -39,6 +39,10 @@ func init() {
 		hash:  crypto.SHA512,
 		curve: elliptic.P521(),
 	}
+
+	RegisterSigningMethod(ES256.Name(), func() SigningMethod { return ES256 })
+	RegisterSigningMethod(ES384.Name(), func() SigningMethod { return ES384 })
+	RegisterSigningMethod(ES512.Name(), func() SigningMethod { return ES512 })
 }
 
 func (s *SigningMethodECDSA) Name() string {

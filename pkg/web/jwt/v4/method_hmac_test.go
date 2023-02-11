@@ -2,12 +2,10 @@ package v4
 
 import (
 	"bytes"
-	"crypto"
-	"fmt"
 	"testing"
 )
 
-var hmacTestKey = HMACPrivateKey("0hmac1super2secret3code4right5here6buddy7so8what9you10gonna11do12about13it14")
+var hmacTestKey = []byte("0hmac1super2secret3code4right5here6buddy7so8what9you10gonna11do12about13it14")
 
 var testClaims = RegisteredClaims{
 	Issuer:         "joe",
@@ -78,23 +76,13 @@ func TestSigningMethodHMAC_Sign(t *testing.T) {
 			continue
 		}
 
-		token := data.token
-		header := token.Header()
-		signingstr := token.SigningSection()
-		signature := token.Signature()
-		fmt.Printf(
-			"token=\n\n%q\nheader=%q\nsigningstr=%q\nsignature=%q\n\n",
-			token, header, signingstr, signature,
-		)
+		method := GetSigningMethod(data.token.Header().Alg)
 
-		method := GetSigningMethod(header.Alg)
-
-		fmt.Printf(">>> GetSigningMethod=%+v\n", method)
-
-		sig, err := method.Sign(signingstr, crypto.PrivateKey(hmacTestKey))
+		sig, err := method.Sign(data.token.SigningSection(), hmacTestKey)
 		if err != nil {
 			t.Errorf("[%v] Error signing token: %v\n", data.name, err)
 		}
+		signature := data.token.Signature()
 		if !bytes.Equal(sig, signature) {
 			t.Errorf(
 				"[%v] Incorrect signature:\nwanted...\n%v\ngot...\n%v\n",
@@ -107,16 +95,9 @@ func TestSigningMethodHMAC_Sign(t *testing.T) {
 func TestSigningMethodHMAC_Verify(t *testing.T) {
 	for _, data := range hmacTestData {
 
-		token := data.token
-		header := token.Header()
-		signingstr := token.SigningSection()
-		signature := token.Signature()
+		method := GetSigningMethod(data.token.Header().Alg)
 
-		method := GetSigningMethod(header.Alg)
-
-		fmt.Printf(">>> GetSigningMethod=%+v\n", method)
-
-		err := method.Verify(signingstr, signature, hmacTestKey)
+		err := method.Verify(data.token.SigningSection(), data.token.Signature(), hmacTestKey)
 
 		if data.valid && err != nil {
 			t.Errorf("[%v] Error while verifying token: %v\n", data.name, err)
@@ -127,14 +108,14 @@ func TestSigningMethodHMAC_Verify(t *testing.T) {
 	}
 }
 
-// func BenchmarkHS256Signing(b *testing.B) {
-// 	benchmarkSigning(b, jwt.SigningMethodHS256, hmacTestKey)
-// }
-//
-// func BenchmarkHS384Signing(b *testing.B) {
-// 	benchmarkSigning(b, jwt.SigningMethodHS384, hmacTestKey)
-// }
-//
-// func BenchmarkHS512Signing(b *testing.B) {
-// 	benchmarkSigning(b, jwt.SigningMethodHS512, hmacTestKey)
-// }
+func BenchmarkHS256Signing(b *testing.B) {
+	benchmarkSigning(b, HS256, hmacTestKey)
+}
+
+func BenchmarkHS384Signing(b *testing.B) {
+	benchmarkSigning(b, HS384, hmacTestKey)
+}
+
+func BenchmarkHS512Signing(b *testing.B) {
+	benchmarkSigning(b, HS512, hmacTestKey)
+}

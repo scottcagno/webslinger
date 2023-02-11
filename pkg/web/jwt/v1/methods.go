@@ -62,7 +62,7 @@ var (
 )
 
 func (s *SigningMethod) signRSA(signingString string, key PrivateKey) (string, error) {
-	// Validate type of key
+	// ValidateRawToken type of key
 	rsaKey, valid := key.(*rsa.PrivateKey)
 	if !valid {
 		return "", ErrInvalidKey

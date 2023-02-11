@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/json"
+	"time"
 )
 
 type Section uint8
@@ -90,6 +91,11 @@ func NewToken(alg SigningMethod, claims ClaimsSet, key crypto.PrivateKey) (RawTo
 	}
 	header := Base64Encode(dat)
 	// create and encode the payload
+	if claims == nil {
+		claims = &RegisteredClaims{
+			ExpirationTime: NumericDate(time.Now().Add(1 * time.Hour).Unix()),
+		}
+	}
 	dat, err = json.Marshal(claims)
 	if err != nil {
 		return nil, err

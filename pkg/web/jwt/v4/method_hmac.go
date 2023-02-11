@@ -1,27 +1,11 @@
 package v4
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
 	"encoding/base64"
 )
-
-type HMACPrivateKey []byte
-type HMACPublicKey []byte
-
-func (k HMACPrivateKey) Public() crypto.PublicKey {
-	return k
-}
-
-func (k HMACPrivateKey) Equal(x crypto.PrivateKey) bool {
-	return bytes.Equal(k, x.([]byte))
-}
-
-func (k HMACPublicKey) Equal(x crypto.PublicKey) bool {
-	return bytes.Equal(k, x.([]byte))
-}
 
 // SigningMethodHMAC implements the HMAC-SHA family of signing methods.
 // Expects key type of []byte for both signing and validation
@@ -67,8 +51,8 @@ func (s *SigningMethodHMAC) GenerateKeyPair() *KeyPair {
 	}
 	base64.RawURLEncoding.Encode(buf, buf)
 	return &KeyPair{
-		PrivateKey: HMACPrivateKey(buf),
-		PublicKey:  HMACPublicKey(buf),
+		PrivateKey: buf,
+		PublicKey:  buf,
 	}
 }
 

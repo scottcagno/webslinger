@@ -43,37 +43,37 @@ func (v *Validator) ValidateClaims(claims ClaimsSet) error {
 	// Get the current time
 	now := time.Now()
 
-	// Validate expiration time claim (exp)
+	// ValidateRawToken expiration time claim (exp)
 	if !v.checkExpiresAtClaim(claims.GetEXP, now) {
 		verr = errors.Join(verr, ErrTokenExpired)
 	}
 
-	// Validate not before time claim (nbf)
+	// ValidateRawToken not before time claim (nbf)
 	if !v.checkNotBeforeClaim(claims.GetNBF, now) {
 		verr = errors.Join(verr, ErrTokenNotValidYet)
 	}
 
-	// Validate issued at time claim (iat)
+	// ValidateRawToken issued at time claim (iat)
 	if !v.checkIssuedAtClaim(claims.GetIAT, now) {
 		verr = errors.Join(verr, ErrTokenUsedBeforeIssued)
 	}
 
-	// Validate audience claim (aud)
+	// ValidateRawToken audience claim (aud)
 	if !v.checkAudienceClaim(claims.GetAUD()) {
 		verr = errors.Join(verr, ErrTokenInvalidAudience)
 	}
 
-	// Validate issuer claim (iss)
+	// ValidateRawToken issuer claim (iss)
 	if !v.checkIssuerClaim(claims.GetISS()) {
 		verr = errors.Join(verr, ErrTokenInvalidIssuer)
 	}
 
-	// Validate subject claim (sub)
+	// ValidateRawToken subject claim (sub)
 	if !v.checkSubjectClaim(claims.GetSUB()) {
 		verr = errors.Join(verr, ErrTokenInvalidSubject)
 	}
 
-	// Validate any custom claims set that the
+	// ValidateRawToken any custom claims set that the
 	// user may have implemented.
 	if custom, ok := claims.(CustomClaimsSet); ok {
 		if err := custom.Validate(); err != nil {

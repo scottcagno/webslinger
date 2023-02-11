@@ -16,13 +16,13 @@ import (
 type Token struct {
 	Raw       RawToken
 	Header    TokenHeader
-	Payload   ClaimsSet
+	Payload   *RegisteredClaims
 	Method    SigningMethod
 	Signature []byte
 	Valid     bool
 }
 
-func (v *Validator) Validate(raw RawToken, key crypto.PublicKey) (*Token, error) {
+func (v *Validator) ValidateRawToken(raw RawToken, key crypto.PublicKey) (*Token, error) {
 
 	// Create error type
 	var verr error
@@ -40,14 +40,14 @@ func (v *Validator) Validate(raw RawToken, key crypto.PublicKey) (*Token, error)
 		return nil, verr
 	}
 
-	// Validate the claims
+	// ValidateRawToken the claims
 	err = v.ValidateClaims(token.Payload)
 	if err != nil {
 		verr = errors.Join(err, ErrTokenClaimsInvalid)
 		// We should continue on to validating the signature
 	}
 
-	// Validate the final "validation" on the signature
+	// ValidateRawToken the final "validation" on the signature
 	partialToken := raw[:bytes.LastIndexByte(raw, '.')]
 	err = token.Method.Verify(partialToken, token.Signature, key)
 	if err != nil {

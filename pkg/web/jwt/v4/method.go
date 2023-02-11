@@ -5,6 +5,27 @@ import (
 	"sync"
 )
 
+var methods sync.Map
+
+func GetSigningMethod(name string) SigningMethod {
+	fn, found := methods.Load(name)
+	if !found {
+		return nil
+	}
+	methodFn, ok := fn.(func() SigningMethod)
+	if !ok {
+		panic("could not get signing method: method func error")
+	}
+
+	var method SigningMethod
+	method = methodFn()
+	return method
+}
+
+func RegisterSigningMethod(name string, fn func() SigningMethod) {
+	methods.Store(name, fn)
+}
+
 type KeyPair struct {
 	PrivateKey crypto.PrivateKey
 	PublicKey  crypto.PublicKey
@@ -27,25 +48,4 @@ type SigningMethod interface {
 	// Verify should take a token and signature and verify the token using the
 	// provided signature.
 	Verify(partialToken []byte, signature []byte, key crypto.PublicKey) error
-}
-
-var methods sync.Map
-
-func GetSigningMethod(name string) SigningMethod {
-	fn, found := methods.Load(name)
-	if !found {
-		return nil
-	}
-	methodFn, ok := fn.(func() SigningMethod)
-	if !ok {
-		panic("could not get signing method: method func error")
-	}
-
-	var method SigningMethod
-	method = methodFn()
-	return method
-}
-
-func RegisterSigningMethod(name string, fn func() SigningMethod) {
-	methods.Store(name, fn)
 }

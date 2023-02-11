@@ -29,3 +29,8 @@ var (
 	ErrTokenClaimsInvalid    = errors.New("token claims validation error")
 	ErrTokenSignatureInvalid = errors.New("token validation signature invalid")
 )
+
+var (
+	ErrNoTokenInRequest = errors.New("no token present in request")
+	ErrNoCookieFound    = errors.New("no cookie present with specified name in request")
+)

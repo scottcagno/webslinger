@@ -1,4 +1,4 @@
-package v4
+package jwt
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ var (
 	ErrSignatureInvalid = errors.New("alg: signature is invalid")
 )
 
-// Validator errors
+// validator errors
 var (
 	ErrTokenExpired             = errors.New("token expired")
 	ErrTokenNotValidYet         = errors.New("token not valid yet")

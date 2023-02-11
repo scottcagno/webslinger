@@ -1,13 +1,13 @@
-package v4
+package jwt
 
 import (
 	"errors"
 	"time"
 )
 
-// Validator is the main validation structure for validating
+// validator is the main validation structure for validating
 // claims, etc.
-type Validator struct {
+type validator struct {
 
 	// Margin is an optional time margin that can be applied
 	// to account for clock skew
@@ -35,7 +35,7 @@ type Validator struct {
 	Method SigningMethod
 }
 
-func (v *Validator) ValidateClaims(claims ClaimsSet) error {
+func (v *validator) ValidateClaims(claims ClaimsSet) error {
 
 	// Create a new error
 	var verr error
@@ -87,7 +87,7 @@ func (v *Validator) ValidateClaims(claims ClaimsSet) error {
 	return verr
 }
 
-func (v *Validator) checkIssuerClaim(iss string, err error) bool {
+func (v *validator) checkIssuerClaim(iss string, err error) bool {
 	// If expected is false or empty, skip (return true)
 	if v.ExpectedISS == "" {
 		return true
@@ -98,7 +98,7 @@ func (v *Validator) checkIssuerClaim(iss string, err error) bool {
 	return iss == v.ExpectedISS
 }
 
-func (v *Validator) checkSubjectClaim(sub string, err error) bool {
+func (v *validator) checkSubjectClaim(sub string, err error) bool {
 	// If expected is false or empty, skip (return true)
 	if v.ExpectedSUB == "" {
 		return true
@@ -109,7 +109,7 @@ func (v *Validator) checkSubjectClaim(sub string, err error) bool {
 	return sub == v.ExpectedSUB
 }
 
-func (v *Validator) checkAudienceClaim(aud string, err error) bool {
+func (v *validator) checkAudienceClaim(aud string, err error) bool {
 	// If expected is false or empty, skip (return true)
 	if v.ExpectedAUD == "" {
 		return true
@@ -120,7 +120,7 @@ func (v *Validator) checkAudienceClaim(aud string, err error) bool {
 	return aud == v.ExpectedAUD
 }
 
-func (v *Validator) checkExpiresAtClaim(claim func() (NumericDate, error), now time.Time) bool {
+func (v *validator) checkExpiresAtClaim(claim func() (NumericDate, error), now time.Time) bool {
 	exp, err := claim()
 	if err != nil && err != SkipValidation {
 		return false
@@ -128,7 +128,7 @@ func (v *Validator) checkExpiresAtClaim(claim func() (NumericDate, error), now t
 	return now.Before(exp.Time().Add(+v.Margin))
 }
 
-func (v *Validator) checkIssuedAtClaim(claim func() (NumericDate, error), now time.Time) bool {
+func (v *validator) checkIssuedAtClaim(claim func() (NumericDate, error), now time.Time) bool {
 	if !v.ValidateIAT {
 		return true
 	}
@@ -139,7 +139,7 @@ func (v *Validator) checkIssuedAtClaim(claim func() (NumericDate, error), now ti
 	return !now.Before(iat.Time().Add(-v.Margin))
 }
 
-func (v *Validator) checkNotBeforeClaim(claim func() (NumericDate, error), now time.Time) bool {
+func (v *validator) checkNotBeforeClaim(claim func() (NumericDate, error), now time.Time) bool {
 	nbf, err := claim()
 	if err != nil && err != SkipValidation {
 		return false

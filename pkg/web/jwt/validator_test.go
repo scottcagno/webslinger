@@ -1,11 +1,11 @@
-package v4
+package jwt
 
 import (
 	"crypto"
 	"testing"
 )
 
-func benchmarkValidateToken(b *testing.B, validator Validator, raw RawToken) {
+func benchmarkValidateToken(b *testing.B, validator validator, raw RawToken) {
 	b.Helper()
 	b.ReportAllocs()
 	b.ResetTimer()

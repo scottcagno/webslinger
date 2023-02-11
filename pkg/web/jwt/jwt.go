@@ -1,4 +1,4 @@
-package v4
+package jwt
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 // 		secret)
 
 type Token struct {
-	Raw       RawToken
+	RawToken
 	Header    TokenHeader
 	Payload   *RegisteredClaims
 	Method    SigningMethod
@@ -22,7 +22,7 @@ type Token struct {
 	Valid     bool
 }
 
-func (v *Validator) ValidateRawToken(raw RawToken, key crypto.PublicKey) (*Token, error) {
+func (v *validator) ValidateRawToken(raw RawToken, key crypto.PublicKey) (*Token, error) {
 
 	// Create error type
 	var verr error
@@ -77,7 +77,7 @@ func ParseRawToken(raw RawToken) (*Token, error) {
 
 	// Initialize a token instance
 	var token Token
-	token.Raw = raw
+	token.RawToken = raw
 
 	// Parse the raw token header
 	headerBytes := Base64Decode(parts[0])

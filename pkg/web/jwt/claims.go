@@ -96,3 +96,69 @@ func (r *RegisteredClaims) GetIAT() (NumericDate, error) {
 func (r *RegisteredClaims) GetJTI() (string, error) {
 	return r.ID, nil
 }
+
+type MapClaims map[string]any
+
+func (m MapClaims) getClaim(k string) (any, error) {
+	v, found := m[k]
+	if !found {
+		return nil, ErrTokenClaimNotFound
+	}
+	return v, nil
+}
+
+func (m MapClaims) GetISS() (string, error) {
+	v, err := m.getClaim("iss")
+	if err != nil {
+		return "", err
+	}
+	return v.(string), nil
+}
+
+func (m MapClaims) GetSUB() (string, error) {
+	v, err := m.getClaim("sub")
+	if err != nil {
+		return "", err
+	}
+	return v.(string), nil
+}
+
+func (m MapClaims) GetAUD() (string, error) {
+	v, err := m.getClaim("aud")
+	if err != nil {
+		return "", err
+	}
+	return v.(string), nil
+}
+
+func (m MapClaims) GetEXP() (NumericDate, error) {
+	v, err := m.getClaim("exp")
+	if err != nil {
+		return -1, err
+	}
+	return v.(NumericDate), nil
+}
+
+func (m MapClaims) GetNBF() (NumericDate, error) {
+	v, err := m.getClaim("nbf")
+	if err != nil {
+		return -1, err
+	}
+	return v.(NumericDate), nil
+}
+
+func (m MapClaims) GetIAT() (NumericDate, error) {
+	v, err := m.getClaim("iat")
+	if err != nil {
+		return -1, err
+	}
+	return v.(NumericDate), nil
+}
+
+func (m MapClaims) GetJTI() (string, error) {
+	v, err := m.getClaim("jti")
+	if err != nil {
+		return "", err
+	}
+	return v.(string), nil
+}

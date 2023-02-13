@@ -20,6 +20,7 @@ var (
 	ErrTokenInvalidIssuer       = errors.New("token contains invalid issuer")
 	ErrTokenInvalidSubject      = errors.New("token contains invalid subject")
 	ErrTokenInvalidCustomClaims = errors.New("token contains invalid custom claims")
+	ErrTokenClaimNotFound       = errors.New("token claim not found")
 )
 
 // Parser errors

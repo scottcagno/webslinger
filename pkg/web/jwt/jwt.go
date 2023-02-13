@@ -15,7 +15,7 @@ import (
 type Token struct {
 	RawToken
 	Header    TokenHeader
-	Payload   *RegisteredClaims
+	Payload   MapClaims
 	Method    SigningMethod
 	Signature []byte
 	Valid     bool

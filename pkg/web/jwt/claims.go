@@ -1,7 +1,9 @@
 package jwt
 
 import (
+	"encoding/json"
 	"errors"
+	"math"
 	"time"
 )
 
@@ -9,6 +11,24 @@ type NumericDate int64
 
 func (n NumericDate) Time() time.Time {
 	return time.Unix(int64(n), 0)
+}
+
+func (n NumericDate) Add(d time.Duration) NumericDate {
+	return NumericDate(time.Unix(int64(n), 0).Add(d).Unix())
+}
+
+func NumericDateNow() NumericDate {
+	return NumericDate(time.Now().Unix())
+}
+
+func NumericDateFromFloat(f float64) NumericDate {
+	sec, dec := math.Modf(f)
+	return NumericDate(time.Unix(int64(sec), int64(dec*1e9)).Unix())
+}
+
+func NumericDateFromJsonNumber(n json.Number) NumericDate {
+	v, _ := n.Int64()
+	return NumericDate(v)
 }
 
 // SkipValidation can be  used as a return value from ValidateClaimFunc to
@@ -132,27 +152,27 @@ func (m MapClaims) GetAUD() (string, error) {
 }
 
 func (m MapClaims) GetEXP() (NumericDate, error) {
-	v, err := m.getClaim("exp")
+	v, err := m.getNumericDate("exp")
 	if err != nil {
 		return -1, err
 	}
-	return v.(NumericDate), nil
+	return v, nil
 }
 
 func (m MapClaims) GetNBF() (NumericDate, error) {
-	v, err := m.getClaim("nbf")
+	v, err := m.getNumericDate("nbf")
 	if err != nil {
 		return -1, err
 	}
-	return v.(NumericDate), nil
+	return v, nil
 }
 
 func (m MapClaims) GetIAT() (NumericDate, error) {
-	v, err := m.getClaim("iat")
+	v, err := m.getNumericDate("iat")
 	if err != nil {
 		return -1, err
 	}
-	return v.(NumericDate), nil
+	return v, nil
 }
 
 func (m MapClaims) GetJTI() (string, error) {
@@ -161,4 +181,29 @@ func (m MapClaims) GetJTI() (string, error) {
 		return "", err
 	}
 	return v.(string), nil
+}
+
+func (m MapClaims) getNumericDate(k string) (NumericDate, error) {
+	v, found := m[k]
+	if !found {
+		return -1, ErrTokenClaimNotFound
+	}
+	var n NumericDate
+	switch t := v.(type) {
+	case float64:
+		n = NumericDateFromFloat(t)
+		break
+	case json.Number:
+		n = NumericDateFromJsonNumber(t)
+		break
+	}
+	return n, nil
+}
+
+func (m MapClaims) String() string {
+	b, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
 }
